@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=auto, user-scalable=no">
+  <title>TikTok Data Viewer · Persistent Config</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader { animation: spin 0.6s linear infinite; }
+    .scrollbar-thin { scrollbar-width: thin; }
+    body { padding-bottom: 0px!important; }
+    .data-table td, .data-table th { padding: 0.5rem; font-size: 0.7rem; }
+    .validation-match { color: #16a34a; }
+    .validation-mismatch { color: #dc2626; }
+    .modal-enter { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-leave { animation: fadeOut 0.2s ease; }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    #mainFooter button span { display: none!important; }
+    .data-table th, .data-table td { border-bottom: 1px solid #d1d5db; }
+    .overlay button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30%;
+    }
+    .dark .data-table th { background-color: #1f2937; color: #e5e7eb; }
+    .dark .data-table td { color: #e5e7eb; }
+    .dark .bg-white { background-color: #1f2937; }
+    .dark .bg-gray-100 { background-color: #111827; }
+    .dark .bg-gray-50 { background-color: #1f2937; }
+    .dark .text-gray-700, .dark .text-gray-800, .dark .text-gray-900 { color: #e5e7eb; }
+    .dark .border-gray-200 { border-color: #374151; }
+    .dark .border-gray-100 { border-color: #1f2937; }
+    .dark .modal-enter .bg-white { background-color: #1f2937; }
+    body{
+      padding-top: 15px!important;
+padding-bottom: 15px!important;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#e6f0f3', 100: '#cce0e8', 200: '#99c1d1', 300: '#66a3b9', 400: '#3385a2', 500: '#1a3a5c', 600: '#162e4a', 700: '#112438', 800: '#0b1926', 900: '#060d13' },
+            teal: { 50: '#e6faf4', 100: '#ccf5e9', 200: '#99ebd3', 300: '#66e1bd', 400: '#33d7a7', 500: '#2a9d8f', 600: '#228374', 700: '#1a6959', 800: '#114f3f', 900: '#093524' },
+            gold: { 50: '#fef7e6', 100: '#fdefcc', 200: '#fbdf99', 300: '#f8cf66', 400: '#f6bf33', 500: '#c9a03d', 600: '#a88031', 700: '#876025', 800: '#664019', 900: '#45200d' }
+          },
+          boxShadow: {
+            'teal-offset': '0 4px 0 0 rgba(15, 118, 110, 1)',
+            'teal-offset-dark': '0 4px 0 0 rgba(45, 212, 191, 0.4)',
+            'teal-offset-hover': '0 6px 0 0 rgba(13, 148, 136, 1)',
+            'teal-offset-hover-dark': '0 6px 0 0 rgba(45, 212, 191, 0.6)',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-100 font-sans text-sm flex flex-col h-full p-[env(safe-area-inset-top)_env(safe-area-inset-right)_env(safe-area-inset-bottom)_env(safe-area-inset-left)] overflow-hidden dark:bg-gray-900">
+
+  <!-- Config Modal -->
+  <div id="configModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 dark:bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Configure Data Types">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-2xl w-full max-h-full overflow-y-auto p-6 relative modal-enter">
+      <button id="closeConfigBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none select-none" aria-label="Close">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+      <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4"><i class="fas fa-cog mr-2 text-brand-500 dark:text-teal-400"></i>Configure Data Types</h2>
+      <div id="configList" class="mb-4 max-h-96 overflow-y-auto border rounded-lg p-2 dark:border-gray-600"></div>
+      <div class="border-t pt-3 mt-2">
+        <h3 class="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Add / Edit</h3>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <input type="text" id="configId" placeholder="ID (e.g., 'likes')" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <input type="text" id="configLabel" placeholder="Label" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <input type="text" id="configIcon" placeholder="FontAwesome icon (e.g., 'heart')" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <input type="text" id="configIconColor" placeholder="Icon color classes" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <input type="text" id="configPath" placeholder="Path as JSON array, e.g. ['Likes','List']" class="col-span-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <label class="flex items-center gap-2 text-gray-700 dark:text-gray-300 select-none"><input type="checkbox" id="configComputed"> Computed (no path)</label>
+          <input type="text" id="configDependsOn" placeholder="Depends on (comma-separated IDs)" class="col-span-2 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+        </div>
+        <div class="flex gap-2 mt-3">
+          <button id="saveConfigBtn" class="px-3 py-1.5 text-xs bg-brand-500 text-white rounded-lg hover:bg-brand-600 dark:bg-teal-600 dark:hover:bg-teal-700 select-none">Save / Update</button>
+          <button id="deleteConfigBtn" class="px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 select-none">Delete Selected</button>
+          <button id="resetConfigBtn" class="px-3 py-1.5 text-xs bg-gray-500 text-white rounded-lg hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 select-none">Reset to Default</button>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Changes are saved to your browser. Reset to restore original types.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 dark:bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Upload and extraction options">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-lg w-full max-h-full overflow-y-auto p-6 relative modal-enter">
+      <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none select-none"><i class="fas fa-times text-xl"></i></button>
+      <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4"><i class="fas fa-upload mr-2 text-brand-500 dark:text-teal-400"></i>Upload & Extract</h2>
+      <div class="mb-3">
+        <label class="text-xs font-medium text-gray-700 dark:text-gray-300"><i class="fas fa-user mr-1"></i>Current User</label>
+        <div class="flex gap-2 mt-1">
+          <input type="text" id="currentUserInput" placeholder="Auto‑detect from profile" class="flex-1 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-300 focus:outline-none dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <button id="applyUserBtn" class="px-3 py-1.5 text-xs bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-all duration-200 focus:ring-2 focus:ring-brand-300 dark:bg-teal-600 dark:hover:bg-teal-700 dark:focus:ring-teal-400 select-none"><i class="fas fa-sync-alt mr-1"></i>Apply</button>
+        </div>
+        <div id="detectedUserInfo" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></div>
+      </div>
+      <div id="checkboxesContainer" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3 text-xs w-full"></div>
+      <hr class="my-2 border-gray-200 dark:border-gray-600">
+      <div class="mb-2">
+        <label class="text-xs font-medium text-gray-700 dark:text-gray-300"><i class="fas fa-file-upload mr-1"></i>Upload JSON</label>
+        <div class="flex items-center gap-2 mt-1">
+          <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+          <button id="chooseFileBtn" class="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-all duration-200 select-none"><i class="fas fa-folder-open mr-1"></i>Choose File</button>
+          <button id="extractFileBtn" disabled class="px-3 py-1.5 text-xs bg-gray-400 text-white rounded-lg opacity-50 cursor-not-allowed select-none"><i class="fas fa-play mr-1"></i>Extract</button>
+        </div>
+        <span id="selectedFileName" class="text-xs text-gray-500 dark:text-gray-400 truncate">No file chosen</span>
+      </div>
+      <div class="mt-2">
+        <label class="text-xs font-medium text-gray-700 dark:text-gray-300"><i class="fas fa-link mr-1"></i>Fetch from URL</label>
+        <div class="flex gap-2 mt-1">
+          <input type="text" id="jsonUrlInput" placeholder="https://.../data.json" class="flex-1 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+          <button id="fetchJsonBtn" class="px-3 py-1.5 text-xs bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-all duration-200 dark:bg-teal-600 dark:hover:bg-teal-700 select-none"><i class="fas fa-download mr-1"></i>Fetch</button>
+        </div>
+      </div>
+      <hr class="my-2 border-gray-200 dark:border-gray-600">
+      <div id="progressContainer" class="hidden mb-2">
+        <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1"><span id="progressStep">0/0</span><span id="progressMessage">Ready</span></div>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"><div id="progressBar" class="bg-brand-500 h-1.5 rounded-full" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 pt-1 pb-1 flex justify-between items-center">
+    <div class="flex items-center h-full relative">
+      <object class="h-[60px] w-auto block absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-100 visible dark:opacity-0 dark:invisible" data="h-logo-light.svg" type="image/svg+xml"></object>
+      <object class="h-[60px] w-auto block absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 invisible dark:opacity-100 dark:visible" data="h-logo-dark.svg" type="image/svg+xml"></object>
+    </div>
+    <div class="flex gap-2">
+      <button id="darkModeToggle" class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white select-none"><i id="darkModeIcon" class="fas fa-moon text-xl text-brand-500 dark:text-gold-400"></i></button>
+    </div>
+  </div>
+
+  <!-- Main content (3 panes) -->
+  <div id="mainContent" class="flex flex-col flex-1 overflow-hidden px-4 py-3 scrollbar-thin">
+    <!-- INPUT PANE -->
+    <div id="pane-input" class="flex-1 pane overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col">
+        <div class="w-full flex justify-between items-center border-b pb-1 mb-2">
+          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100"><i class="fab fa-tiktok text-brand-500 dark:text-teal-400 mr-2"></i>TikTok Data Extractor</h1>
+          <button id="uploadBtn" class="py-1.5 px-2 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 dark:bg-teal-600 dark:hover:bg-teal-700 select-none"><i class="fas fa-upload"></i><span>Upload</span></button>
+        </div>
+        <div id="statsCountsContainer" class="mb-3"></div>
+        <!-- Validation table with explicit text colors -->
+        <div class="mb-3">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                <th class="py-1 font-medium text-gray-700 dark:text-gray-300">Check</th>
+                <th class="py-1 font-medium text-right text-gray-700 dark:text-gray-300">Extracted</th>
+                <th class="py-1 font-medium text-right text-gray-700 dark:text-gray-300">Profile</th>
+                <th class="py-1 font-medium text-center text-gray-700 dark:text-gray-300">Match</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-user-plus text-purple-500 dark:text-purple-400 mr-3"></i>Following</td>
+                <td id="followingExtracted" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td id="followingProfile" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td class="py-1 text-center"><i id="followingIcon" class="fas fa-question-circle text-gray-400 dark:text-gray-500"></i></td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-user-check text-purple-500 dark:text-purple-400 mr-3"></i>Follower</td>
+                <td id="followerExtracted" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td id="followerProfile" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td class="py-1 text-center"><i id="followerIcon" class="fas fa-question-circle text-gray-400 dark:text-gray-500"></i></td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-heart text-red-500 dark:text-red-400 mr-3"></i>Likes</td>
+                <td id="likesExtracted" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td id="likesProfile" class="py-1 text-right text-gray-800 dark:text-gray-200">--</td>
+                <td class="py-1 text-center"><i id="likesIcon" class="fas fa-question-circle text-gray-400 dark:text-gray-500"></i></td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-user-slash text-yellow-500 dark:text-yellow-400 mr-3"></i>N/A Following</td>
+                <td id="naFollowingRemoved" class="py-1 text-right text-gray-800 dark:text-gray-200" colspan="3">--</td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-user-slash text-yellow-500 dark:text-yellow-400 mr-3"></i>N/A Follower</td>
+                <td id="naFollowerRemoved" class="py-1 text-right text-gray-800 dark:text-gray-200" colspan="3">--</td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-700">
+                <td class="py-1 text-gray-800 dark:text-gray-200"><i class="fas fa-ban text-orange-500 dark:text-orange-400 mr-3"></i>N/A Blocked</td>
+                <td id="naBlockedRemoved" class="py-1 text-right text-gray-800 dark:text-gray-200" colspan="3">--</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="workerStatus" class="text-xs text-center text-gray-600 dark:text-gray-400 mb-2"></div>
+        <div class="flex gap-2 mt-auto">
+          <button id="openConfigBtn" class="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-500 shadow-teal-offset dark:shadow-teal-offset-dark hover:shadow-teal-offset-hover dark:hover:shadow-teal-offset-hover-dark active:shadow-none active:translate-y-1 transition-all duration-150 select-none">
+<i class="fas fa-cog text-xl"></i>Config
+</button>
+          <button id="clearBtn" class="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-500 shadow-teal-offset dark:shadow-teal-offset-dark hover:shadow-teal-offset-hover dark:hover:shadow-teal-offset-hover-dark active:shadow-none active:translate-y-1 transition-all duration-150 select-none">
+            <i class="fas fa-eraser text-xl"></i>Clear
+          </button>
+   
+          <button id="copyAllBtn" class="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-500 shadow-teal-offset dark:shadow-teal-offset-dark hover:shadow-teal-offset-hover dark:hover:shadow-teal-offset-hover-dark active:shadow-none active:translate-y-1 transition-all duration-150 select-none">
+            <i class="fas fa-copy text-xl"></i>Copy
+          </button>
+          <button id="downloadAllBtn" class="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-500 shadow-teal-offset dark:shadow-teal-offset-dark hover:shadow-teal-offset-hover dark:hover:shadow-teal-offset-hover-dark active:shadow-none active:translate-y-1 transition-all duration-150 select-none">
+            <i class="fas fa-download text-xl"></i>Download
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA VIEWER PANE -->
+    <div id="pane-data-viewer" class="flex-1 pane hidden overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm h-full flex flex-col">
+        <div class="flex flex-wrap items-center gap-2 p-3 border-b">
+          <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-2 py-1">
+            <i id="selectedTypeIcon" class="fas"></i>
+            <select id="dataTypeSelect" class="bg-transparent text-xs focus:outline-none text-gray-800 dark:text-gray-200"></select>
+          </div>
+          <div class="flex gap-1 ml-auto">
+            <button id="viewJsonBtn" class="px-3 py-1 text-xs bg-brand-500 text-white rounded-lg select-none">JSON</button>
+            <button id="viewTableBtn" class="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg select-none">Table</button>
+          </div>
+          <div class="flex gap-1">
+            <button id="copyDataBtn" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg select-none"><i class="fas fa-copy"></i> Copy</button>
+            <button id="downloadDataBtn" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg select-none"><i class="fas fa-download"></i> Download</button>
+          </div>
+        </div>
+        <div id="dataViewerContent" class="flex-1 overflow-y-auto p-3"></div>
+      </div>
+    </div>
+
+    <!-- STATS PANE -->
+    <div id="pane-stats" class="flex-1 pane hidden overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm h-full flex flex-col">
+<div class="flex gap-1">
+<div class="p-3 border-b flex-1">
+<h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Statistics & Validation</h3>
+</div>
+<button id="reportBtn" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg select-none"><i class="fas fa-copy"></i> Copy</button>
+</div>
+        <pre id="statsContent" class="flex-1 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-3 rounded-lg text-xs overflow-auto h-full font-mono whitespace-pre-wrap break-all"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="bg-white dark:bg-gray-800 border-t px-4 pb-3 pt-2" id="mainFooter">
+    <div class="flex gap-2">
+      <button class="main-tab-btn flex-1 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-brand-300 flex flex-col items-center gap-0.5 select-none" data-main="input">
+        <i class="fas fa-upload text-base"></i><span>Input</span>
+      </button>
+      <button class="main-tab-btn flex-1 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-brand-300 flex flex-col items-center gap-0.5 select-none" data-main="data-viewer">
+        <i class="fas fa-table text-base"></i><span>Data Viewer</span>
+      </button>
+      <button class="main-tab-btn flex-1 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-brand-300 flex flex-col items-center gap-0.5 select-none" data-main="stats">
+        <i class="fas fa-chart-bar text-base"></i><span>Stats</span>
+      </button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
